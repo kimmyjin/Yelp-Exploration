@@ -17,7 +17,7 @@ offset = seq(from = 0, to = 480, by = 40)
 pasteFun = function(a, b){
   return(paste0("http://api.yelp.com/v2/search/?limit=40&location=",a,"&offset=",b))
 }
-yelpurl = outer(City_name, offset,pasteFun)
+yelpurl = outer(City_name, offset,pasteFun) 
 yelpurl = as.vector(t(yelpurl))
 
 
@@ -33,6 +33,8 @@ getDf = function(url) {
   return(cbind(busiDf, locaDf))
 } 
 listDf = lapply(yelpurl, getDf)
-busi_data = bind_rows(listDf)
+yelp_data = bind_rows(listDf)
 
+save(yelp_data,
+     file = "yelp.RData")
 
