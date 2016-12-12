@@ -1,5 +1,5 @@
 library(dplyr)
-
+library(parallel)
 consumerKey = "-PPitwpvzIKTO4kzMT_u5g"
 consumerSecret = "5LSxS2M4ht4Xq-J7pSTjtt879Do"
 token = "cgZvBMDN6UnT-KPLrfeD0gX0rTNR18ls"
@@ -32,7 +32,7 @@ getDf = function(url) {
     select(rating, review_count, name, categories, phone)
   return(cbind(busiDf, locaDf))
 } 
-listDf = lapply(yelpurl, getDf)
+listDf = system.time(mclapply(yelpurl, getDf, mc.cores=24))
 yelp_data = bind_rows(listDf)
 
 save(yelp_data,
