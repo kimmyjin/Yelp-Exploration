@@ -32,7 +32,7 @@ getDf = function(url) {
     select(rating, review_count, name, categories, phone)
   return(cbind(busiDf, locaDf))
 } 
-listDf = system.time(mclapply(yelpurl, getDf, mc.cores=24))
+listDf = mclapply(yelpurl, getDf, mc.cores=24)
 yelp_data = bind_rows(listDf)
 
 save(yelp_data,
