@@ -15,7 +15,7 @@ limit = 40
 offset = seq(from = 0, to = 480, by = 40)
 
 pasteFun = function(a, b){
-  return(paste0("http://api.yelp.com/v2/search/?limit=40&term=restaurants&location=",a,"&offset=",b))
+  return(paste0("http://api.yelp.com/v2/search/?limit=40&term=restaurant&location=",a,"&offset=",b))
 }
 yelpurl = outer(City_name, offset,pasteFun) 
 yelpurl = as.vector(t(yelpurl))
@@ -37,8 +37,17 @@ yelp_data = bind_rows(listDf)
 
 save(yelp_data,
      file = "yelp.RData")
-aa = yelp_data$categories %>% flatten(.)
-bb = aa%>% flatten(.)
+
+keys = yelp_data$categories %>% flatten() %>% tolower() %>% unique()
+lists = yelp_data$categories %>% flatten()
+res = lappy(keys, function(key) unlist([]))
+
+map_func = function(val)
+{
+  flatten() 
+}
+
+
 
 yelp_data$categories =sub(x = yelp_data$categories,"(.\\()(.*)(\\))",replace ="\\2")
 yelp_data$address=sub(x = yelp_data$address,"(.\\()(.*)(\\))",replace ="\\2")
