@@ -17,7 +17,12 @@ shinyApp(
       sidebarPanel(
         selectInput("city","select a city",c("",sort(table$City))),          
         hr(),
-        selectInput("category","Category",c("Rating"="rating","Review Count"="review_count")),
+        ##################33
+        checkboxGroupInput("checkGroup1", label = h5("posterior summary statistics"),  #Create check box for mean, median and confidence level
+                           choices = list("Rating"="rating","Review Count"="review_count"),inline=TRUE),
+        
+        
+####################################
         hr(),
         plotOutput("plot1")
       ),
@@ -56,14 +61,28 @@ shinyApp(
           setView(lng = lng1, lat = lat1, zoom = zo)
         
       }else{
-        
+        ##########################################3
         yelp_data1 = yelp_data %>% 
           filter(city == city1)%>%
-          select(name,long,lat) %>% 
-          group_by(long,lat) %>% mutate(name = list(name)) %>% unique()
+          select(name,long,lat,rating,review_count) %>% 
+          group_by(long,lat) %>% 
+          mutate(name = list(name),rating=mean(as.numeric(rating)),review_count=mean(as.numeric(review_count))) %>% 
+          unique()
+        
+        rad = mean(yelp_data1$review_count)/5
+        alp = 0.5
+        
+        if (any(input$checkGroup1=="rating")){
+          alp = yelp_data1$rating/max(yelp_data1$rating)*0.5
+        }
+        # generate median values if median is selected
+        if (any(input$checkGroup1=="review_count")){
+          rad = yelp_data1$review_count/5
+        }
+   
+        
+        #####################################
         cont <- NULL
-        
-        
         for (i in 1:nrow(yelp_data1)){
           yelp_data2 = yelp_data1$name[[i]]
           cont1 <- NULL
@@ -76,18 +95,17 @@ shinyApp(
         zo <-12
         lng1 <- mean(yelp_data1$long)
         lat1 <- mean(yelp_data1$lat)
-        
-        content <- rep(paste(sep = "<br/>",
-                             "<b><a href='http://www.samurainoodle.com'>Samurai Noodle</a></b>",
-                             "606 5th Ave. S",
-                             "Seattle, WA 98138"),13)
-        
+
+        ###################
         leaflet() %>%
           addTiles(
             urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
             attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
           ) %>%
-          addMarkers(yelp_data1$long, lat = yelp_data1$lat,  popup =cont,
+          addCircles(yelp_data1$long, lat = yelp_data1$lat,stroke = FALSE,
+                     color = "#FF0000",
+                     radius = rad,  opacity = alp,fillOpacity =alp,
+                     popup =cont,
                      options = popupOptions(closeButton = TRUE)
           )%>%
           setView(lng = lng1, lat = lat1, zoom = zo)
