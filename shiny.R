@@ -31,33 +31,19 @@ shinyApp(
     )
   ),
   server = function(input, output,session) {
-    ###data
-    yelp_data1 <- reactive({
+    ###Map
+    output$Map <- renderLeaflet({
+      
       city1 <- input$city
       if (city1 == ""){
-        yelp_data%>% select(city,lat,long) %>% mutate(city = unlist(city)) %>% 
+        
+        yelp_data1 <- yelp_data%>% select(city,lat,long) %>% mutate(city = unlist(city)) %>% 
           group_by(city) %>% mutate(lat = mean(lat),long = mean(long),name = city) %>%
           unique() %>% as_data_frame()
-      }else{
-          yelp_data %>% filter(city == city1)
-          # select(name,long,lat) %>% 
-          # group_by(long,lat) %>% mutate(name = list(name)) %>%unique()
         
-          #test1 = lapply(test$name,unlist)
-      }
-    })
-      
-    ###Map
-      output$Map <- renderLeaflet({
-        if(ncol(yelp_data1())==4){
-          zo <- 4
-          lng1 <- -93.85
-          lat1 <- 37.45
-        }else{
-          zo <-12
-          lng1 <- mean(yelp_data1()$long)
-          lat1 <- mean(yelp_data1()$lat)
-        }
+        zo <- 4
+        lng1 <- -93.85
+        lat1 <- 37.45
         
         leaflet() %>%
           addTiles(
@@ -65,25 +51,47 @@ shinyApp(
             attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
           ) %>%
           addMarkers(
-            lng = yelp_data1()$long, lat = yelp_data1()$lat, 
-            popup=yelp_data1()$name)%>%
+            lng = yelp_data1$long, lat = yelp_data1$lat, 
+            popup=yelp_data1$name)%>%
           setView(lng = lng1, lat = lat1, zoom = zo)
-  })
-  ###plot
-      # output$plot2 <- renderPlot({
-      #   # If no city are in view, don't plot
-      #   if (input$city == ""){
-      #     return(NULL)
-      #   }else{
-      #     plotdata = yelp_data1() %>% select(name,rating,review_count) %>%
-      #       mutate(pop = unlist(rating)*unlist(review_count))
-      # 
-      #     # hist(pop,freq = FALSE,main=paste("The Popularity of" ,input$city,"Restaurant"))
-      #     ggplot(data = plotdata, aes(x = name, y = pop)) +
-      #       geom_bar(stat="identity")
-      #   }
-      # })
-      
-      
+        
+      }else{
+        
+        yelp_data1 = yelp_data %>% 
+          filter(city == city1)%>%
+          select(name,long,lat) %>% 
+          group_by(long,lat) %>% mutate(name = list(name)) %>% unique()
+        cont <- NULL
+        
+        
+        for (i in 1:nrow(yelp_data1)){
+          yelp_data2 = yelp_data1$name[[i]]
+          cont1 <- NULL
+          for (j in 1:length(yelp_data2)){
+            cont1 = paste( sep = "<br/>",cont1,yelp_data2[[j]])
+          }
+          cont <- c(cont,cont1)
+        }
+        
+        zo <-12
+        lng1 <- mean(yelp_data1$long)
+        lat1 <- mean(yelp_data1$lat)
+        
+        content <- rep(paste(sep = "<br/>",
+                             "<b><a href='http://www.samurainoodle.com'>Samurai Noodle</a></b>",
+                             "606 5th Ave. S",
+                             "Seattle, WA 98138"),13)
+        
+        leaflet() %>%
+          addTiles(
+            urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
+            attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
+          ) %>%
+          addMarkers(yelp_data1$long, lat = yelp_data1$lat,  popup =cont,
+                     options = popupOptions(closeButton = TRUE)
+          )%>%
+          setView(lng = lng1, lat = lat1, zoom = zo)
+      }
+    })
   }
 )
