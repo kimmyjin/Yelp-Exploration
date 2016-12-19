@@ -19,7 +19,7 @@ shinyApp(
         hr(),
         selectInput("category","Category",c("Rating"="rating","Review Count"="review_count")),
         hr(),
-        plotOutput("plot1")
+        plotOutput("pieplot")
       ),
       mainPanel(
         leafletOutput('Map'),
@@ -27,10 +27,42 @@ shinyApp(
                  'Data from', tags$em('Wikipedia'), 'and',tags$em('Yelp')
         ),
         plotOutput("plot2")
+        
+        
+        #br(),
+        #plotOutput("pieplot")
+        
+        
       )
     )
   ),
   server = function(input, output,session) {
+   
+    df1=reactive({
+      DF = NULL 
+        data = yelp_data[which(yelp_data$city==input$city),]
+        tab = unique(map_chr(data$categories,1))
+        category=NULL
+        for(i in seq_along(tab)){
+          pattern = agrep(tab[i], data$categories)
+          count1 = length(pattern)
+          temp = as.data.frame(cbind(tab[i],count1))  
+          category=rbind(category,temp)
+        }
+        category$count1 = as.integer(as.vector(category$count1))
+        category = head(category[order(category$count1, decreasing = TRUE), ],10)
+        category$city = rep(input$city, 10)
+        return(category)
+    })
+    
+     output$pieplot=renderPlot({
+       ggplot(df1(),aes(x="",y=count1,fill=V1))+geom_bar(width=1,stat="identity")+
+         coord_polar("y",start=0)+
+         theme_bw()+
+         facet_grid(city~.,scales="free")+
+         ylab("")
+    })
+    
     ###Map
     output$Map <- renderLeaflet({
       
@@ -62,8 +94,6 @@ shinyApp(
           select(name,long,lat) %>% 
           group_by(long,lat) %>% mutate(name = list(name)) %>% unique()
         cont <- NULL
-        
-        
         for (i in 1:nrow(yelp_data1)){
           yelp_data2 = yelp_data1$name[[i]]
           cont1 <- NULL
@@ -93,5 +123,9 @@ shinyApp(
           setView(lng = lng1, lat = lat1, zoom = zo)
       }
     })
+    
+    
+    
+    
   }
 )

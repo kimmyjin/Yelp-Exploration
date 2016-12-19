@@ -37,9 +37,10 @@ yelp_data = bind_rows(listDf)
 
 save(yelp_data,
      file = "yelp.RData")
-aa = yelp_data$categories %>% flatten(.)
-bb = aa%>% flatten(.)
 
-yelp_data$categories =sub(x = yelp_data$categories,"(.\\()(.*)(\\))",replace ="\\2")
-yelp_data$address=sub(x = yelp_data$address,"(.\\()(.*)(\\))",replace ="\\2")
-yelp_data$coordinate=sub(x = yelp_data$coordinate,"(.*\\()(.*)(\\))",replace ="\\2")
+# aa = yelp_data$categories %>% flatten(.)
+# bb = aa%>% flatten(.)
+# 
+# yelp_data$categories =sub(x = yelp_data$categories,"(.\\()(.*)(\\))",replace ="\\2")
+# yelp_data$address=sub(x = yelp_data$address,"(.\\()(.*)(\\))",replace ="\\2")
+# yelp_data$coordinate=sub(x = yelp_data$coordinate,"(.*\\()(.*)(\\))",replace ="\\2")
