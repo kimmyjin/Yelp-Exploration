@@ -1,0 +1,247 @@
+---
+title: "final"
+output: html_document
+---
+```{r}
+# ########################################yelp_api###########################################
+# #loading the packages
+# library(dplyr)
+# library(parallel)
+# require(httr)
+# require(httpuv)
+# require(jsonlite)
+# 
+# #authorization step
+# #setting variables for the validation of scrapping
+# consumerKey = "-PPitwpvzIKTO4kzMT_u5g"
+# consumerSecret = "5LSxS2M4ht4Xq-J7pSTjtt879Do"
+# token = "cgZvBMDN6UnT-KPLrfeD0gX0rTNR18ls"
+# token_secret = "cKlcQEUDE6PW_4SVA69fEQ11Z_A"
+# 
+# #connecting to yelp database
+# myapp = oauth_app("YELP", key=consumerKey, secret=consumerSecret)
+# sig=sign_oauth1.0(myapp, token=token,token_secret=token_secret)
+# 
+# #Number of business results to return
+# limit = 40
+# 
+# #Offsetting the list of returned business results by this amount
+# offset = seq(from = 0, to = 480, by = 40)
+# 
+# #defining a paste function which returning a combined url
+# pasteFun = function(a, b){
+#   return(paste0("http://api.yelp.com/v2/search/?limit=40&term=restaurant&location=",a,"&offset=",b))
+# }
+# 
+# #using outer function to get all of urls
+# yelpurl = outer(City_name, offset, pasteFun) 
+# 
+# #setting all urls as a vector
+# yelpurl = as.vector(t(yelpurl))
+# 
+# #defining a function to get all desired information from the yelp api and saving them as a dataframe
+# getDf = function(url) {
+#   #getting the location data of url
+#   locationdata = GET(url, sig)
+#   locationdataContent = content(locationdata)
+#   #getting the detailed address of restaurant
+#   location = jsonlite::fromJSON(toJSON(locationdataContent$businesses[[1]]$location))
+#   #choosing "city", "postal_code", "address", "coordinate" and "state_code" columns
+#   locaDf = data.frame(t(sapply(location,c))) %>%
+#     select(city, postal_code, address, coordinate, state_code)
+#   locationdataList = jsonlite::fromJSON(toJSON(locationdataContent))
+#   #choosing "rating", "review_count", "name", "categories", and "phone" columns
+#   busiDf = locationdataList$businesses %>% 
+#     select(rating, review_count, name, categories, phone)
+#   #combining two dataframe together
+#   return(cbind(busiDf, locaDf))
+# } 
+# 
+# #using the mclappy with 24 cores to reduce running time
+# listDf = mclapply(yelpurl, getDf, mc.cores=24)
+# #getting yelp_data dataframe by combining all rows 
+# yelp_data = bind_rows(listDf)
+# 
+# #saving the data
+# save(yelp_data,
+#      file = "yelp.RData")
+# ########################################city table###########################################
+#loading the packages
+library(rvest)
+library(dplyr)
+library(stringr)
+library(htmltab)
+
+#getting the url of the webpage
+url = "https://en.wikipedia.org/wiki/List_of_United_States_cities_by_population"
+
+#scrapping the table from the wikipedia and saving it as dataframe
+population = htmltab(doc = url, which = "//*[@id='mw-content-text']/table[4]") %>%
+  as.data.frame()
+
+#extracting numbers from the `2010 population density` column
+population$`2010 population density` = gsub(x = population$`2010 population density`,
+                                            pattern = "(.*\\s)(\\d+.{0,1}\\d+)(.*)", replace = "\\2")
+
+#arranging the table with the order of 2010 population density
+population$`2010 population density` = str_replace(population$`2010 population density`, ",","")%>%as.numeric()
+table = population %>%
+  arrange(desc(`2010 population density`)) %>%
+  head(.,20)
+
+#getting the city names from the re-arranged dataframe
+City_name = table$City %>% str_replace(" ","")
+
+##########################################################data###########
+load("yelp.RData")
+library(dplyr)
+coord <- yelp_data$coordinate %>% unlist %>% matrix(ncol=2,byrow = TRUE)
+yelp_data <- yelp_data %>% mutate(lat = coord[,1]) %>% mutate(long = coord[,2])
+##########################################################shiny###########
+library(shiny)
+library(leaflet)
+library(dplyr)
+library(RColorBrewer)
+library(ggplot2)
+library(purrr)
+
+
+shinyApp(
+  ui = fluidPage(
+    titlePanel("Yelp"),
+    sidebarLayout(
+      sidebarPanel(
+        selectInput("city","select a city",c("",sort(table$City))),          
+        hr(),
+        checkboxGroupInput("checkGroup1", label = h5("Circle Property"),  #check box
+                           choices = list("Rating (opacity)"="rating","Review Count (radius)"="review_count"),inline=TRUE),
+        hr(),
+        plotOutput("pieplot")                                             #plot
+      ),
+      mainPanel(
+        textOutput("text1"),
+        hr(),
+        leafletOutput('Map'),                                             #map
+        tags$div(id="cite",
+                 'Data from', tags$em('Wikipedia'), 'and',tags$em('Yelp')
+        )
+      )
+    )
+  ),
+  server = function(input, output,session) {
+    ###plot
+    df1=reactive({
+      DF = NULL 
+      data = yelp_data[which(yelp_data$city==input$city),]
+      tab = unique(map_chr(data$categories,1))
+      category=NULL
+      for(i in seq_along(tab)){
+        pattern = agrep(tab[i], data$categories)
+        count1 = length(pattern)
+        temp = as.data.frame(cbind(tab[i],count1))  
+        category=rbind(category,temp)
+      }
+      category$count1 = as.integer(as.vector(category$count1))
+      category = head(category[order(category$count1, decreasing = TRUE), ],10)
+      category$city = rep(input$city, 10)
+      names(category)=c("type","count","city")
+      return(category)
+    })
+    
+    output$pieplot=renderPlot({
+      if (input$city == ""){
+        return(NULL)
+      }else{
+        ggplot(df1(),aes(x="",y=count,fill=type))+geom_bar(width=1,stat="identity")+
+          coord_polar("y",start=0)+
+          theme_bw()
+      }
+    })
+    
+    ###Map
+    output$Map <- renderLeaflet({
+      
+      city1 <- input$city
+      ###if no city selected
+      if (city1 == ""){
+        yelp_data1 <- yelp_data%>% select(city,lat,long) %>% mutate(city = unlist(city)) %>% 
+          group_by(city) %>% mutate(lat = mean(lat),long = mean(long),name = city) %>%
+          unique() %>% as_data_frame()
+        
+        zo <- 4
+        lng1 <- -93.85
+        lat1 <- 37.45
+        
+        leaflet() %>%
+          addTiles(
+            urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
+            attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
+          ) %>%
+          addMarkers(
+            lng = yelp_data1$long, lat = yelp_data1$lat, 
+            popup=yelp_data1$name)%>%
+          setView(lng = lng1, lat = lat1, zoom = zo)
+        
+      }else{
+      ###if a city is selected
+        yelp_data1 = yelp_data %>% 
+          filter(city == city1)%>%
+          select(name,long,lat,rating,review_count) %>% 
+          group_by(long,lat) %>% 
+          mutate(name = list(name),rating=mean(as.numeric(rating)),review_count=mean(as.numeric(review_count))) %>%
+          unique()
+        ###default circle radius&opacity
+        rad = mean(yelp_data1$review_count)
+        alp = 0.5
+        ###circle opacity changes according to restaurant rating
+        if (any(input$checkGroup1=="rating")){
+          alp = (yelp_data1$rating/max(yelp_data1$rating))^10
+        }
+        ###circle radius changes according to restaurant review count
+        if (any(input$checkGroup1=="review_count")){
+          rad = yelp_data1$review_count*2
+        }
+        ###restaurants in the same location
+        cont <- NULL
+        for (i in 1:nrow(yelp_data1)){
+          yelp_data2 = yelp_data1$name[[i]]
+          cont1 <- NULL
+          for (j in 1:length(yelp_data2)){
+            cont1 = paste( sep = "<br/>",cont1,yelp_data2[[j]])
+          }
+          cont <- c(cont,cont1)
+        }
+        ###map
+        zo <-12
+        lng1 <- mean(yelp_data1$long)
+        lat1 <- mean(yelp_data1$lat)
+        
+        leaflet() %>%
+          addTiles(
+            urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
+            attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
+          ) %>%
+          addCircles(yelp_data1$long, lat = yelp_data1$lat,stroke = FALSE,
+                     color = "#FF0000",
+                     radius = rad,  opacity = alp,fillOpacity =alp,
+                     popup =cont,
+                     options = popupOptions(closeButton = TRUE)
+          )%>%
+          setView(lng = lng1, lat = lat1, zoom = zo)
+      }
+    })
+    
+###instruction
+    output$text1 <- renderText({
+      if (input$city == ""){
+      "Please click pinpoints to see city names"
+      }else{
+        "Please click circles to see the local best match restaurants"
+      }
+    })
+  }
+)
+
+
+```
+
