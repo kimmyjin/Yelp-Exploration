@@ -17,12 +17,14 @@ shinyApp(
       sidebarPanel(
         selectInput("city","select a city",c("",sort(table$City))),          
         hr(),
-        checkboxGroupInput("checkGroup1", label = h5("posterior summary statistics"),  #Create check box for mean, median and confidence level
-                           choices = list("Rating"="rating","Review Count"="review_count"),inline=TRUE),
+        checkboxGroupInput("checkGroup1", label = h5("Circle Property"),  #Create check box for mean, median and confidence level
+                           choices = list("Rating (opacity)"="rating","Review Count (radius)"="review_count"),inline=TRUE),
         hr(),
         plotOutput("pieplot")
       ),
       mainPanel(
+        textOutput("text1"),
+        hr(),
         leafletOutput('Map'),
         tags$div(id="cite",
                  'Data from', tags$em('Wikipedia'), 'and',tags$em('Yelp')
@@ -51,11 +53,15 @@ shinyApp(
     })
     
     output$pieplot=renderPlot({
-      ggplot(df1(),aes(x="",y=count1,fill=V1))+geom_bar(width=1,stat="identity")+
-        coord_polar("y",start=0)+
-        theme_bw()+
-        facet_grid(city~.,scales="free")+
-        ylab("")
+      if (input$city == ""){
+        return(NULL)
+      }else{
+        ggplot(df1(),aes(x="",y=count1,fill=V1))+geom_bar(width=1,stat="identity")+
+          coord_polar("y",start=0)+
+          theme_bw()+
+          facet_grid(city~.,scales="free")+
+          ylab("")
+      }
     })
     
     ###Map
@@ -83,7 +89,7 @@ shinyApp(
           setView(lng = lng1, lat = lat1, zoom = zo)
         
       }else{
-        ##########################################3
+        
         yelp_data1 = yelp_data %>% 
           filter(city == city1)%>%
           select(name,long,lat,rating,review_count) %>% 
@@ -91,15 +97,15 @@ shinyApp(
           mutate(name = list(name),rating=mean(as.numeric(rating)),review_count=mean(as.numeric(review_count))) %>% 
           unique()
         
-        rad = mean(yelp_data1$review_count)/5
+        rad = mean(yelp_data1$review_count)
         alp = 0.5
         
         if (any(input$checkGroup1=="rating")){
-          alp = yelp_data1$rating/max(yelp_data1$rating)*0.5
+          alp = (yelp_data1$rating/max(yelp_data1$rating))^10
         }
         # generate median values if median is selected
         if (any(input$checkGroup1=="review_count")){
-          rad = yelp_data1$review_count/5
+          rad = yelp_data1$review_count*2
         }
         
         cont <- NULL
@@ -128,6 +134,15 @@ shinyApp(
                      options = popupOptions(closeButton = TRUE)
           )%>%
           setView(lng = lng1, lat = lat1, zoom = zo)
+      }
+    })
+    
+###instruction
+    output$text1 <- renderText({
+      if (input$city == ""){
+      "Please click pinpoints to see city names"
+      }else{
+        "Please click circles to see the local best match restaurants"
       }
     })
   }
