@@ -65,6 +65,12 @@ output: html_document
 # #saving the data
 # save(yelp_data,
 #      file = "yelp.RData")
+
+```
+
+
+
+```{r}
 # ########################################city table###########################################
 #loading the packages
 library(rvest)
@@ -92,12 +98,20 @@ table = population %>%
 #getting the city names from the re-arranged dataframe
 City_name = table$City %>% str_replace(" ","")
 
-##########################################################data###########
+```
+
+In this part, we mainly assemble all the pieces that have already completed in the previous tasks together and show their visualization in the shiny app. Basically, in the side-bar-panel, users are allowed to choose a city from the dropdown menu to see the best matched restaurants on the map. All the cities in the menu come from the table we grabbed from Wikipedia, which are the top 20 U.S. cities with high population density. Moreover, there are two check boxes for detailed information shown on the map, one refers to customer rating and the other is the total review count. If the “Rating” box is checked by the user, the transparency of representing points on the map will increase as the restaurants with higher rating. Besides, if the “Review Count” box is checked, the radius of representing points will increase as the total review counts increase. A pie chart contained the city’s popular food type information is shown under the two check boxes.
+
+In the main panel, the U.S. map would display based on the city the user selected in the side-bar-panel. If no city is selected in the side-bar-panel, only pinpoints will show on the map and users are allowed to click the pinpoints to show city names. If the city input is available, the red representing points located by their longitudes and latitudes will show on the map and they will change their transparency and size with different customized information. Users can click the representing points to see which restaurants are recommended by Yelp near their current location. The Shiny App default presents forty restaurants on the interface. 
+
+
+```{r}
+##############################data###########
 load("yelp.RData")
 library(dplyr)
-coord <- yelp_data$coordinate %>% unlist %>% matrix(ncol=2,byrow = TRUE)
-yelp_data <- yelp_data %>% mutate(lat = coord[,1]) %>% mutate(long = coord[,2])
-##########################################################shiny###########
+coord <- yelp_data$coordinate %>% unlist %>% matrix(ncol=2,byrow = TRUE) #Get longitude and latitude 
+yelp_data <- yelp_data %>% mutate(lat = coord[,1]) %>% mutate(long = coord[,2]) #Combine longitude and latitude with the original dataframe
+##############################shiny###########
 library(shiny)
 library(leaflet)
 library(dplyr)
@@ -119,7 +133,7 @@ shinyApp(
         plotOutput("pieplot")                                             #plot
       ),
       mainPanel(
-        textOutput("text1"),
+        textOutput("text1"),                                              #text
         hr(),
         leafletOutput('Map'),                                             #map
         tags$div(id="cite",
@@ -132,26 +146,26 @@ shinyApp(
     ###plot
     df1=reactive({
       DF = NULL 
-      data = yelp_data[which(yelp_data$city==input$city),]
-      tab = unique(map_chr(data$categories,1))
+      data = yelp_data[which(yelp_data$city==input$city),]                #Get data for each city
+      tab = unique(map_chr(data$categories,1))                            #Use text mapping to extract food type
       category=NULL
       for(i in seq_along(tab)){
-        pattern = agrep(tab[i], data$categories)
-        count1 = length(pattern)
-        temp = as.data.frame(cbind(tab[i],count1))  
+        pattern = agrep(tab[i], data$categories)                          #Match the data with pattern
+        count1 = length(pattern)                                          #Count the number for each food style
+        temp = as.data.frame(cbind(tab[i],count1))                        #Combine the food style and its total count into a dataframe
         category=rbind(category,temp)
       }
-      category$count1 = as.integer(as.vector(category$count1))
-      category = head(category[order(category$count1, decreasing = TRUE), ],10)
+      category$count1 = as.integer(as.vector(category$count1))            
+      category = head(category[order(category$count1, decreasing = TRUE), ],10) #Only remain the top 10 food style for each city
       category$city = rep(input$city, 10)
       names(category)=c("type","count","city")
       return(category)
     })
     
     output$pieplot=renderPlot({
-      if (input$city == ""){
+      if (input$city == ""){                                                    #If no city input, no plot will show on the interface
         return(NULL)
-      }else{
+      }else{                                                                    #If a city is selected, a pie chart will show the food style distribution
         ggplot(df1(),aes(x="",y=count,fill=type))+geom_bar(width=1,stat="identity")+
           coord_polar("y",start=0)+
           theme_bw()
@@ -163,28 +177,28 @@ shinyApp(
       
       city1 <- input$city
       ###if no city selected
-      if (city1 == ""){
+      if (city1 == ""){                                                           #Obtain city location
         yelp_data1 <- yelp_data%>% select(city,lat,long) %>% mutate(city = unlist(city)) %>% 
           group_by(city) %>% mutate(lat = mean(lat),long = mean(long),name = city) %>%
           unique() %>% as_data_frame()
         
-        zo <- 4
-        lng1 <- -93.85
-        lat1 <- 37.45
+        zo <- 4                                                                   #Default zoom size
+        lng1 <- -93.85                                                            #Default center's longitude
+        lat1 <- 37.45                                                             #Default center's latitude
         
         leaflet() %>%
-          addTiles(
+          addTiles(                                                               #Load map from the website
             urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
             attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
           ) %>%
-          addMarkers(
+          addMarkers(                                                             #Draw pinpoints
             lng = yelp_data1$long, lat = yelp_data1$lat, 
             popup=yelp_data1$name)%>%
           setView(lng = lng1, lat = lat1, zoom = zo)
         
       }else{
       ###if a city is selected
-        yelp_data1 = yelp_data %>% 
+        yelp_data1 = yelp_data %>%                                                 #Combine restaurant information in the same location
           filter(city == city1)%>%
           select(name,long,lat,rating,review_count) %>% 
           group_by(long,lat) %>% 
@@ -195,14 +209,14 @@ shinyApp(
         alp = 0.5
         ###circle opacity changes according to restaurant rating
         if (any(input$checkGroup1=="rating")){
-          alp = (yelp_data1$rating/max(yelp_data1$rating))^10
+          alp = (yelp_data1$rating/max(yelp_data1$rating))^10                      #Use power 10 to change the magitude of rating
         }
         ###circle radius changes according to restaurant review count
         if (any(input$checkGroup1=="review_count")){
-          rad = yelp_data1$review_count*2
+          rad = yelp_data1$review_count*2                                          #Times 2 to expand the scale of review count
         }
-        ###restaurants in the same location
-        cont <- NULL
+        ###Lists containing restaurants in the same location
+        cont <- NULL         
         for (i in 1:nrow(yelp_data1)){
           yelp_data2 = yelp_data1$name[[i]]
           cont1 <- NULL
@@ -221,7 +235,7 @@ shinyApp(
             urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
             attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
           ) %>%
-          addCircles(yelp_data1$long, lat = yelp_data1$lat,stroke = FALSE,
+          addCircles(yelp_data1$long, lat = yelp_data1$lat,stroke = FALSE,       #Add representing circle located by longitude and latitude 
                      color = "#FF0000",
                      radius = rad,  opacity = alp,fillOpacity =alp,
                      popup =cont,
@@ -241,7 +255,6 @@ shinyApp(
     })
   }
 )
-
 
 ```
 
