@@ -2,8 +2,47 @@
 title: "final"
 output: html_document
 ---
+
+In order to visualize and analysis diet structure of local residents in the major cities of the Unites State, we take advantage of the restaurant information from the yelp API. The main techniques our group implemented is including but not limited to *dplyr*, *data visualization and exploration (ggplot)*, *web information scraping*, *cleaning data (regularization expression and map function)*, *functional programming*, *shiny* as well as *parallelization*, etc.
+
+
+###Get City Table & Gather Information from Yelp API
+
+To take a peep at the tons of information provided by yelp website, we narrow down the location to only 20 cities with the highest population density by scrapping, cleaning up, and ranking the table on Wikipedia (https://en.wikipedia.org/wiki/List_of_United_States_cities_by_population). Since yelp API request enables a maximum of 40 url’s per page, we vary the other parameter `offset` -- the number of pages to get a total of 520 observations (40 per page * 13 pages). For each of these cities, we select the first 520 “best-matched” restaurants given by yelp. Each city is multiplied by each page using `outer` function. Since the data given back from yelp are all lists of columns, we clean up its format and select important and useful variables in the `getDf` function such as rating, reviews counts and categories, which will be used to create interactive plots.
+
+
+
 ```{r}
-# ########################################yelp_api###########################################
+#loading the packages
+library(rvest)
+library(dplyr)
+library(stringr)
+library(htmltab)
+
+#getting the url of the webpage
+url = "https://en.wikipedia.org/wiki/List_of_United_States_cities_by_population"
+
+#scrapping the table from the wikipedia and saving it as dataframe
+population = htmltab(doc = url, which = "//*[@id='mw-content-text']/table[4]") %>%
+  as.data.frame()
+
+#extracting numbers from the `2010 population density` column
+population$`2010 population density` = gsub(x = population$`2010 population density`,
+                                            pattern = "(.*\\s)(\\d+.{0,1}\\d+)(.*)", replace = "\\2")
+
+#arranging the table with the order of 2010 population density
+population$`2010 population density` = str_replace(population$`2010 population density`, ",","")%>%as.numeric()
+table = population %>%
+  arrange(desc(`2010 population density`)) %>%
+  head(.,20)
+
+#getting the city names from the re-arranged dataframe
+City_name = table$City %>% str_replace(" ","")
+
+```
+
+
+```{r}
 # #loading the packages
 # library(dplyr)
 # library(parallel)
@@ -23,7 +62,6 @@ output: html_document
 # sig=sign_oauth1.0(myapp, token=token,token_secret=token_secret)
 # 
 # #Number of business results to return
-# limit = 40
 # 
 # #Offsetting the list of returned business results by this amount
 # offset = seq(from = 0, to = 480, by = 40)
@@ -70,37 +108,13 @@ output: html_document
 
 
 
-```{r}
-# ########################################city table###########################################
-#loading the packages
-library(rvest)
-library(dplyr)
-library(stringr)
-library(htmltab)
-
-#getting the url of the webpage
-url = "https://en.wikipedia.org/wiki/List_of_United_States_cities_by_population"
-
-#scrapping the table from the wikipedia and saving it as dataframe
-population = htmltab(doc = url, which = "//*[@id='mw-content-text']/table[4]") %>%
-  as.data.frame()
-
-#extracting numbers from the `2010 population density` column
-population$`2010 population density` = gsub(x = population$`2010 population density`,
-                                            pattern = "(.*\\s)(\\d+.{0,1}\\d+)(.*)", replace = "\\2")
-
-#arranging the table with the order of 2010 population density
-population$`2010 population density` = str_replace(population$`2010 population density`, ",","")%>%as.numeric()
-table = population %>%
-  arrange(desc(`2010 population density`)) %>%
-  head(.,20)
-
-#getting the city names from the re-arranged dataframe
-City_name = table$City %>% str_replace(" ","")
-
-```
+Shiny App
 
 In this part, we mainly assemble all the pieces that have already completed in the previous tasks together and show their visualization in the shiny app. Basically, in the side-bar-panel, users are allowed to choose a city from the dropdown menu to see the best matched restaurants on the map. All the cities in the menu come from the table we grabbed from Wikipedia, which are the top 20 U.S. cities with high population density. Moreover, there are two check boxes for detailed information shown on the map, one refers to customer rating and the other is the total review count. If the “Rating” box is checked by the user, the transparency of representing points on the map will increase as the restaurants with higher rating. Besides, if the “Review Count” box is checked, the radius of representing points will increase as the total review counts increase. A pie chart contained the city’s popular food type information is shown under the two check boxes.
+
+One of the most interesting features of our group “website” is that we could visualize the food type distribution of each city. User could choose one of the cities with the top 20 largest population density among all of cities in the United State. Once the user’s target city is selected, the corresponding information would be pulled out from our database automatically. Each restaurant type is sorted by frequency from high to low. Finally, the top 10 popular type will show on the users' interface as well as a pie chart containing proportional information. This information is useful since it could reflect the diet structure of the local resident. Moreover, it also implicitly reflects the local geographical characteristics and even income and consumption level of the local resident.
+
+For example, when you search city--Cambridge, the *seafood* ranks #1. It makes a lot of sense since the Cambridge located just next to the Charles River where people could access seafood much easier than inland city. However, for the inland city such as Chicago, the restaurant type *bar* ranks #1. It is a quite interesting phenomenon that it implies Chicago residents would probably prefer going to bar.
 
 In the main panel, the U.S. map would display based on the city the user selected in the side-bar-panel. If no city is selected in the side-bar-panel, only pinpoints will show on the map and users are allowed to click the pinpoints to show city names. If the city input is available, the red representing points located by their longitudes and latitudes will show on the map and they will change their transparency and size with different customized information. Users can click the representing points to see which restaurants are recommended by Yelp near their current location. The Shiny App default presents forty restaurants on the interface. 
 
@@ -258,3 +272,4 @@ shinyApp(
 
 ```
 
+In conclusion, as the extension of the yelp app, our group finish and complete the project goal. Our team fully takes advantage of the knowledge we have learnt of this whole semester. 
