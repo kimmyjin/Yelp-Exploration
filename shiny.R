@@ -17,14 +17,10 @@ shinyApp(
       sidebarPanel(
         selectInput("city","select a city",c("",sort(table$City))),          
         hr(),
-        ##################33
         checkboxGroupInput("checkGroup1", label = h5("posterior summary statistics"),  #Create check box for mean, median and confidence level
                            choices = list("Rating"="rating","Review Count"="review_count"),inline=TRUE),
-        
-        
-####################################
         hr(),
-        plotOutput("plot1")
+        plotOutput("pieplot")
       ),
       mainPanel(
         leafletOutput('Map'),
@@ -36,6 +32,32 @@ shinyApp(
     )
   ),
   server = function(input, output,session) {
+    ###plot
+    df1=reactive({
+      DF = NULL 
+      data = yelp_data[which(yelp_data$city==input$city),]
+      tab = unique(map_chr(data$categories,1))
+      category=NULL
+      for(i in seq_along(tab)){
+        pattern = agrep(tab[i], data$categories)
+        count1 = length(pattern)
+        temp = as.data.frame(cbind(tab[i],count1))  
+        category=rbind(category,temp)
+      }
+      category$count1 = as.integer(as.vector(category$count1))
+      category = head(category[order(category$count1, decreasing = TRUE), ],10)
+      category$city = rep(input$city, 10)
+      return(category)
+    })
+    
+    output$pieplot=renderPlot({
+      ggplot(df1(),aes(x="",y=count1,fill=V1))+geom_bar(width=1,stat="identity")+
+        coord_polar("y",start=0)+
+        theme_bw()+
+        facet_grid(city~.,scales="free")+
+        ylab("")
+    })
+    
     ###Map
     output$Map <- renderLeaflet({
       
@@ -79,9 +101,7 @@ shinyApp(
         if (any(input$checkGroup1=="review_count")){
           rad = yelp_data1$review_count/5
         }
-   
         
-        #####################################
         cont <- NULL
         for (i in 1:nrow(yelp_data1)){
           yelp_data2 = yelp_data1$name[[i]]
@@ -95,8 +115,7 @@ shinyApp(
         zo <-12
         lng1 <- mean(yelp_data1$long)
         lat1 <- mean(yelp_data1$lat)
-
-        ###################
+        
         leaflet() %>%
           addTiles(
             urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
