@@ -1,12 +1,15 @@
 ---
-title: "final"
+title: "Team Babas: Yelp Exploration"
 output: html_document
+runtime: shiny
 ---
+
+### Pin Down the Topic
 
 In order to visualize and analysis diet structure of local residents in the major cities of the Unites State, we take advantage of the restaurant information from the yelp API. The main techniques our group implemented is including but not limited to *dplyr*, *data visualization and exploration (ggplot)*, *web information scraping*, *cleaning data (regularization expression and map function)*, *functional programming*, *shiny* as well as *parallelization*, etc.
 
 
-###Get City Table & Gather Information from Yelp API
+### Get City Table & Gather Information from Yelp API
 
 To take a peep at the tons of information provided by yelp website, we narrow down the location to only 20 cities with the highest population density by scrapping, cleaning up, and ranking the table on Wikipedia (https://en.wikipedia.org/wiki/List_of_United_States_cities_by_population). Since yelp API request enables a maximum of 40 url’s per page, we vary the other parameter `offset` -- the number of pages to get a total of 520 observations (40 per page * 13 pages). For each of these cities, we select the first 520 “best-matched” restaurants given by yelp. Each city is multiplied by each page using `outer` function. Since the data given back from yelp are all lists of columns, we clean up its format and select important and useful variables in the `getDf` function such as rating, reviews counts and categories, which will be used to create interactive plots.
 
@@ -108,7 +111,7 @@ City_name = table$City %>% str_replace(" ","")
 
 
 
-Shiny App
+### Visualization and Analysis with Shiny
 
 In this part, we mainly assemble all the pieces that have already completed in the previous tasks together and show their visualization in the shiny app. Basically, in the side-bar-panel, users are allowed to choose a city from the dropdown menu to see the best matched restaurants on the map. All the cities in the menu come from the table we grabbed from Wikipedia, which are the top 20 U.S. cities with high population density. Moreover, there are two check boxes for detailed information shown on the map, one refers to customer rating and the other is the total review count. If the “Rating” box is checked by the user, the transparency of representing points on the map will increase as the restaurants with higher rating. Besides, if the “Review Count” box is checked, the radius of representing points will increase as the total review counts increase. A pie chart contained the city’s popular food type information is shown under the two check boxes.
 
@@ -119,7 +122,7 @@ For example, when you search city--Cambridge, the *seafood* ranks #1. It makes a
 In the main panel, the U.S. map would display based on the city the user selected in the side-bar-panel. If no city is selected in the side-bar-panel, only pinpoints will show on the map and users are allowed to click the pinpoints to show city names. If the city input is available, the red representing points located by their longitudes and latitudes will show on the map and they will change their transparency and size with different customized information. Users can click the representing points to see which restaurants are recommended by Yelp near their current location. The Shiny App default presents forty restaurants on the interface. 
 
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 ##############################data###########
 load("yelp.RData")
 library(dplyr)
@@ -143,15 +146,16 @@ shinyApp(
         hr(),
         checkboxGroupInput("checkGroup1", label = h5("Circle Property"),  #check box
                            choices = list("Rating (opacity)"="rating","Review Count (radius)"="review_count"),inline=TRUE),
-        hr(),
-        plotOutput("pieplot")                                             #plot
+        hr()
       ),
       mainPanel(
         textOutput("text1"),                                              #text
         hr(),
         leafletOutput('Map'),                                             #map
         tags$div(id="cite",
-                 'Data from', tags$em('Wikipedia'), 'and',tags$em('Yelp')
+                 'Data from', tags$em('Wikipedia'), 'and',tags$em('Yelp'),
+        hr(),
+        plotOutput("pieplot")                 #pie plot
         )
       )
     )
