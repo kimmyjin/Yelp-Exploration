@@ -5,6 +5,11 @@ library(httr)
 library(httpuv)
 library(jsonlite)
 
+consumerKey = "KfzIQYbCbnzktysQDoQL-Q"
+consumerSecret = "pKaj2a2wP-D8_DuG5HCmgqezmgw"
+token = "JFjn4UqrKEnIb8MyaqPyYVH3__yTTSd8"
+token_secret = "Nl2CL8OIJ9L4jXaaW5PMWMaDn-Y"
+
 zip_url = "http://www.unitedstateszipcodes.org/"
 stateName = zip_url %>% read_html() %>% html_nodes(".state-links a") %>% html_text()
 
@@ -21,11 +26,6 @@ for (i in seq_along(state_url)) {
 
 thin_zip = sapply(1:length(state_url), function(i) sample(zipcode[[i]], 0.02*length(zipcode[[i]])))
 zip = unlist(thin_zip)
-
-consumerKey = "KfzIQYbCbnzktysQDoQL-Q"
-consumerSecret = "pKaj2a2wP-D8_DuG5HCmgqezmgw"
-token = "JFjn4UqrKEnIb8MyaqPyYVH3__yTTSd8"
-token_secret = "Nl2CL8OIJ9L4jXaaW5PMWMaDn-Y"
 
 # authorization
 myapp = oauth_app("YELP", key=consumerKey, secret=consumerSecret)
