@@ -33,8 +33,6 @@ yelpurl = outer(City_name, offset, pasteFun)
 #setting all urls as a vector
 yelpurl = as.vector(t(yelpurl))
 
-yelpurl[1]
-
 #defining a function to get all desired information from the yelp api and saving them as a dataframe
 getDf = function(url) {
   #getting the location data of url
