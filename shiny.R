@@ -8,6 +8,7 @@ library(leaflet)
 library(dplyr)
 library(RColorBrewer)
 library(ggplot2)
+library(purrr)
 
 
 shinyApp(
@@ -28,8 +29,7 @@ shinyApp(
         leafletOutput('Map'),
         tags$div(id="cite",
                  'Data from', tags$em('Wikipedia'), 'and',tags$em('Yelp')
-        ),
-        plotOutput("plot2")
+        )
       )
     )
   ),
@@ -49,6 +49,7 @@ shinyApp(
       category$count1 = as.integer(as.vector(category$count1))
       category = head(category[order(category$count1, decreasing = TRUE), ],10)
       category$city = rep(input$city, 10)
+      names(category)=c("type","count","city")
       return(category)
     })
     
@@ -56,11 +57,9 @@ shinyApp(
       if (input$city == ""){
         return(NULL)
       }else{
-        ggplot(df1(),aes(x="",y=count1,fill=V1))+geom_bar(width=1,stat="identity")+
+        ggplot(df1(),aes(x="",y=count,fill=type))+geom_bar(width=1,stat="identity")+
           coord_polar("y",start=0)+
-          theme_bw()+
-          facet_grid(city~.,scales="free")+
-          ylab("")
+          theme_bw()
       }
     })
     
